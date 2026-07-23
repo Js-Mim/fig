@@ -39,7 +39,9 @@ If that is the first time using the repository, it may take a while to install t
 
 ## Implemented Features
 
-- Upload CSV files
+- Formula grabbing from CSV, PDF, and text input
+- Basic formula editing
+- Basic calculation of percentage (absolute / relative), and parts (/1000)
 
 
 ## Repository Layout
