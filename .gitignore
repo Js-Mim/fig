@@ -16,7 +16,7 @@ venv/
 .streamlit/secrets.toml
 
 # Pixi
-.pixi/
+.pixi/*
 
 # OS / editor
 .DS_Store
