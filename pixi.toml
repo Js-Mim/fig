@@ -12,6 +12,7 @@ pip = "*"
 [pypi-dependencies]
 streamlit = ">=1.38.0"
 pandas = ">=2.2.2"
+pdfplumber = ">=0.11.10"
 
 [tasks]
 start = "streamlit run app.py"
