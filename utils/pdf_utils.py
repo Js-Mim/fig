@@ -47,9 +47,3 @@ def grab_formula(pdf_bytes: bytes) -> list:
                         continue  # Skip lines where amount is not a valid number
                 
     return exported_formula
-
-if __name__ == "__main__":
-
-
-    print(grab_formula("./jany.pdf"))
-    #print(text)
