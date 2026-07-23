@@ -45,8 +45,7 @@ If that is the first time using the repository, it may take a while to install t
 ## Repository Layout
 
 - `app.py`: main Streamlit app
-- `pixi.toml`: Pixi environment and task configuration
-- `requirements.txt`: pip dependencies
+- `pixi.toml`: Pixi environment onfiguration
 - `pyproject.toml`: project metadata and optional linter config
 - `.gitignore`: common Python and Streamlit ignores
 
