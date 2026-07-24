@@ -1,4 +1,8 @@
 # Fragrance(-formula) Information Grabber (FIG)
+<p align="center">
+    <img src="./assets/fig.png" alt="drawing" width="300"/>
+</p>
+
 You just discovered FIG! A python-based repository for grabbing and displaying information from fragrance-related formulas. Built for personal use, based on everyday-hobbyist needs.
 
 
