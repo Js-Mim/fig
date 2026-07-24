@@ -13,14 +13,14 @@ st.caption("Upload your CSV including the materials and select an operation to p
 # Upload Sidebar
 with st.sidebar:
     st.title("Grabing Options")
-    st.header("PDF Input")
-    uploaded_pdf_file = st.file_uploader("Upload PDF", type=["pdf"])
     st.header("Text Input")
     formula_text = st.text_area(
-        "Add formula line by line, and comma-separate the values. For example:\n"
-        "'Vetiver Haiti, 10%, 1.5', new line, 'Rose Absolute, 1%, 0.5', etc.",
+        "Formula must include the following information: Material, Dilution, Amount in this exact order comma or space separated. " \
+        "Each material must be on a new line.",
         height=120,
     )
+    st.header("PDF Input")
+    uploaded_pdf_file = st.file_uploader("Upload PDF", type=["pdf"])
     st.header("CSV Input")
     uploaded_csv_file = st.file_uploader("Upload CSV", type=["csv"])
     separator = "," #st.text_input("Separator", value=",", max_chars=1)

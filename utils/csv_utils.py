@@ -70,7 +70,11 @@ def compute_percentages(df: pd.DataFrame,
         if isinstance(value, str) and value.endswith("%"):
             dilution_values[idx] = float(value.rstrip("%")) / 100.0
         else:
-            dilution_values[idx] = float(value)
+            sum = pd.to_numeric(df["Dilution"]).mean()
+            if sum > 1:  # in case the "%" sign is missing
+                dilution_values[idx] = float(value) / 100.0
+            else:  # in case the dilution in the formula is already in decimal form
+                dilution_values[idx] = float(value)
     numeric_values = pd.to_numeric(df_copy[column], errors="coerce")
     total = numeric_values.sum()
     if total == 0:
@@ -81,6 +85,7 @@ def compute_percentages(df: pd.DataFrame,
     df_copy["Percentage (Absolute)"] = pd.Series(df_copy["Percentage (Relative)"] * dilution_values, index=df_copy.index)
     df_copy["Parts (/1000)"] = pd.Series((numeric_values / total) * 1000, index=df_copy.index)
     # add percentage symbol
+    df_copy["Dilution"] = df_copy["Dilution"].apply(lambda x: f"{x:.1f}%")
     df_copy["Percentage (Relative)"] = df_copy["Percentage (Relative)"].apply(lambda x: f"{x:.2f}%")
     df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.5f}%")
     return df_copy
@@ -94,11 +99,13 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
         return pd.DataFrame(columns=["Material", "Dilution", "Amount"])
-
     rows = []
     max_len = 0
     for line in lines:
-        parsed = next(csv.reader([line], skipinitialspace=True))
+        if ',' in line:
+            parsed = next(csv.reader([line], delimiter=",", skipinitialspace=True))
+        else:
+            parsed = next(csv.reader([line], delimiter=" ", skipinitialspace=True))
         cleaned = [value.strip() for value in parsed]
         rows.append(cleaned)
         max_len = max(max_len, len(cleaned))
