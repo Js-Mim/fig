@@ -22,6 +22,8 @@ def compute_percentages(df: pd.DataFrame,
     if column not in df.columns:
         raise ValueError(f"Column '{column}' not found.")
 
+    df = df.astype({'Amount': float})
+
     df_copy = df.copy()
     dilution_values = [0] * len(df["Dilution"])
     for idx, value in enumerate(df["Dilution"]):
@@ -67,4 +69,7 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
         columns = [f"Column {idx + 1}" for idx in range(max_len)]
 
     padded_rows = [row + [""] * (max_len - len(row)) for row in rows]
-    return pd.DataFrame(padded_rows, columns=columns)
+    
+    df = pd.DataFrame(padded_rows, columns=columns)
+    df = df.astype({'Amount': float})
+    return df
