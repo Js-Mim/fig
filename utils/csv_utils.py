@@ -5,17 +5,57 @@ import pandas as pd
 import streamlit as st
 from typing import Optional
 
+# defs
+SOLVENT_KEYWORDS = ["IPM", "TEC",
+                    "DPG", "SOLVENT",
+                    "ETHANOL", "ETOH", 
+                    "CARRIER", "DILUENT"]
+
 
 @st.cache_data
 def load_csv(file_bytes: bytes, separator: str, encoding: str) -> pd.DataFrame:
     buffer = io.BytesIO(file_bytes)
-    return pd.read_csv(buffer, sep=separator, encoding=encoding)
+    # check if default columns exist
+    first_line = buffer.readline().decode(encoding).strip()
+    has_header = "Material" in first_line and "Dilution" in first_line and "Amount" in first_line
+    if has_header:
+        buffer.seek(0)  # Reset buffer position to the beginning
+        return pd.read_csv(buffer, sep=separator, encoding=encoding)
+    else:
+        buffer.seek(0)
+        df = pd.read_csv(buffer, sep=separator, encoding=encoding, header=None)
+        df.columns = ["Material", "Dilution", "Amount"]  # Assign default column names
+        return df
 
 
 def choose_filter_column(df: pd.DataFrame) -> Optional[str]:
     if df.empty:
         return None
     return st.selectbox("Column", options=list(df.columns), index=0)
+
+def compute_concentration(df: pd.DataFrame) -> float:
+    if "Percentage (Relative)" not in df.columns:
+        raise ValueError(f"Column 'Percentage (Relative)' not found.")
+    material_name = df["Material"].tolist()
+    relative_percentages = df["Percentage (Relative)"]
+    dilution_values = df["Dilution"]
+    total = 0
+    for material, p_value, d_value in zip(material_name, relative_percentages, dilution_values):
+        if any(key == material.upper() for key in SOLVENT_KEYWORDS):
+            continue  # Skip solvent materials
+        else:
+            p_value_check = isinstance(p_value, str) and p_value.endswith("%")
+            d_value_check = isinstance(d_value, str) and d_value.endswith("%")
+            if p_value_check and d_value_check:
+                dilution_values = float(d_value.rstrip("%")) / 100.0
+                percentage_values = float(p_value.rstrip("%")) / 100.0
+                total += percentage_values * dilution_values  # how much was used in the formula x the dilution
+            else:
+                raise ValueError(f"Invalid values. Expected a string ending with '%'.")
+                
+    total = total * 100  # convert back to percentage
+    return total
+
 
 def compute_percentages(df: pd.DataFrame,
                         column: str = "Amount") -> pd.DataFrame:
@@ -42,7 +82,7 @@ def compute_percentages(df: pd.DataFrame,
     df_copy["Parts (/1000)"] = pd.Series((numeric_values / total) * 1000, index=df_copy.index)
     # add percentage symbol
     df_copy["Percentage (Relative)"] = df_copy["Percentage (Relative)"].apply(lambda x: f"{x:.2f}%")
-    df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.2f}%")
+    df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.5f}%")
     return df_copy
 
 def list_to_dataframe(data: list) -> pd.DataFrame:

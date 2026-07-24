@@ -1,8 +1,9 @@
 # imports
 import io
+import base64
 import streamlit as st
 from utils.pdf_utils import grab_formula
-from utils.csv_utils import load_csv, text_to_dataframe, compute_percentages, list_to_dataframe
+from utils.csv_utils import load_csv, text_to_dataframe, compute_percentages, list_to_dataframe, compute_concentration
 
 # Headline & Title
 st.set_page_config(page_title="FIG-Workbench", layout="wide")
@@ -12,10 +13,6 @@ st.caption("Upload your CSV including the materials and select an operation to p
 # Upload Sidebar
 with st.sidebar:
     st.title("Grabing Options")
-    st.header("CSV Input")
-    uploaded_csv_file = st.file_uploader("Upload CSV", type=["csv"])
-    separator = "," #st.text_input("Separator", value=",", max_chars=1)
-    encoding = "utf-8" #st.text_input("Encoding", value="utf-8")
     st.header("PDF Input")
     uploaded_pdf_file = st.file_uploader("Upload PDF", type=["pdf"])
     st.header("Text Input")
@@ -24,6 +21,10 @@ with st.sidebar:
         "'Vetiver Haiti, 10%, 1.5', new line, 'Rose Absolute, 1%, 0.5', etc.",
         height=120,
     )
+    st.header("CSV Input")
+    uploaded_csv_file = st.file_uploader("Upload CSV", type=["csv"])
+    separator = "," #st.text_input("Separator", value=",", max_chars=1)
+    encoding = "utf-8" #st.text_input("Encoding", value="utf-8")
 
 
 if not uploaded_csv_file and not formula_text.strip() and not uploaded_pdf_file:
@@ -51,7 +52,7 @@ if uploaded_pdf_file:
     except Exception as exc:  # pragma: no cover - runtime UI path
         st.error(f"Failed to read PDF: {exc}")
         st.stop()
-else:
+if formula_text.strip():
     dataframe = text_to_dataframe(formula_text)
 
 # CSV Preview & Edit
@@ -66,42 +67,26 @@ edited_df = st.data_editor(
 st.metric("Materials found", value=len(edited_df))  # Point out number of materials
 working_df = edited_df.copy()
 
+
 # Features & Operations
 st.subheader("Operations")
 ops_percentages, ops_fig_merge,  = st.tabs(
     ["Grab Percentages", "Merge Accords"]
 )
 with ops_percentages:
-    # TODO: Think about the usability of this selectbox.
-    #amount_column = st.selectbox(
-    #    "Amount column",
-    #    options=list(working_df.columns),
-    #    index=list(working_df.columns).index("Amount") if "Amount" in working_df.columns else 0,
-    #)
-    amount_column = "Amount"  # Default to "Amount" column
-    if st.button("Grab Percentages"):
+    amount_column = "Amount"  # Defaults to "Amount" column
+    if st.button("Analyse"):
         try:
             working_df = compute_percentages(working_df, column=amount_column)
             st.success("Dataframe updated with Percentage column.")
+            st.subheader("Updated Data")
+            st.dataframe(working_df, use_container_width=True, hide_index=True)
+            st.metric("Materials found", value=len(edited_df))  # Point out number of materials
+            st.metric("Total Concentration", value=f"{compute_concentration(working_df):.2f}%")
         except ValueError as exc:
             st.error(str(exc))
-
 
 with ops_fig_merge:
     st.subheader("Merge Accords")
     st.caption("Merge multiple accords into one accord.")
     st.info("This operation is not yet implemented.")
-
-st.subheader("Updated Data")
-st.dataframe(working_df, use_container_width=True, hide_index=True)
-
-csv_out = working_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="Download edited file",
-    data=csv_out,
-    file_name="processed_data.csv",
-    mime="text/csv",
-)
-
-
-

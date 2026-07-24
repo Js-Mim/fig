@@ -10,7 +10,7 @@ def grab_formula(pdf_bytes: bytes) -> list:
     # (\d+(?:\.\d+)?) -> Amount match (integer or decimal)
     # $               -> Number at the end
     pattern = r"^(.+?)\s+(\d+(?:\.\d+)?%?)$"
-    bakedin_solvent_pattern = r"\d+\.?\d*\s*(?:IPM|TEC|BB|DPG|)"
+    bakedin_solvent_pattern = r"\d+\.?\d*\s*(?:IPM|TEC|DPG|)"
     
     # output list
     exported_formula = []
