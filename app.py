@@ -80,8 +80,8 @@ working_df = edited_df.copy()
 
 # Features & Operations
 st.subheader("Operations")
-ops_percentages, ops_fig_merge,  = st.tabs(
-    ["Grab Percentages", "Merge Accords"]
+ops_percentages, ops_batches,  = st.tabs(
+    ["Grab Percentages", "Prepare Batches"]
 )
 with ops_percentages:
     amount_column = "Amount"  # Defaults to "Amount" column
@@ -96,7 +96,15 @@ with ops_percentages:
         except ValueError as exc:
             st.error(str(exc))
 
-with ops_fig_merge:
-    st.subheader("Merge Accords")
-    st.caption("Merge multiple accords into one accord.")
-    st.info("This operation is not yet implemented.")
+with ops_batches:
+    # change_dilution = st.checkbox("Dilution Recommendation", value=False)
+    batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5, max_value=20.0, step=0.5)
+    if batch_amount:
+        try:
+            analysed_df = compute_percentages(working_df, column=amount_column)
+            working_df["Amount"] = analysed_df["Percentage (Absolute)"].apply(
+                lambda x: (float(x.rstrip("%")) / 100.0) * batch_amount
+            )
+            st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
+        except ValueError as exc:
+            st.error(str(exc))
