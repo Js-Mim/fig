@@ -45,7 +45,7 @@ def compute_concentration(df: pd.DataFrame) -> float:
     dilution_values = df["Dilution"]
     total = 0
     for material, p_value, d_value in zip(material_name, relative_percentages, dilution_values):
-        if any(key == material.upper() for key in SOLVENT_KEYWORDS):
+        if any(key.strip() == material.upper().strip() for key in SOLVENT_KEYWORDS):
             continue  # Skip solvent materials
         else:
             p_value_check = isinstance(p_value, str) and p_value.endswith("%")
