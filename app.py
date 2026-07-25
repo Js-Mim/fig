@@ -93,10 +93,12 @@ with ops_percentages:
             st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
             st.metric("Total concentration of enlisted materials, minus detected diluents", value=f"{compute_concentration(working_df):.2f}%")
+            st.bar_chart(working_df, x="Material", y="Amount", horizontal=True, use_container_width=True)
         except ValueError as exc:
             st.error(str(exc))
 
 with ops_batches:
+    working_df = edited_df.copy()
     # change_dilution = st.checkbox("Dilution Recommendation", value=False)
     batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5, max_value=20.0, step=0.5)
     if batch_amount:
