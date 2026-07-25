@@ -10,7 +10,8 @@ def grab_formula(pdf_bytes: bytes) -> list:
     # (\d+(?:\.\d+)?) -> Amount match (integer or decimal)
     # $               -> Number at the end
     pattern = r"^(.+?)\s+(\d+(?:\.\d+)?%?)$"
-    bakedin_solvent_pattern = r"\d+\.?\d*\s*(?:IPM|TEC|DPG|)"
+    cas_number_pattern = r'\b\d+(?:-\d+)+\b'
+    bakedin_solvent_pattern = r"\d+\.?\d*\s*(?:IPM|TEC|DPG)"
     
     # output list
     exported_formula = []
@@ -23,14 +24,15 @@ def grab_formula(pdf_bytes: bytes) -> list:
             lines = text.strip().split('\n')
 
             for line in lines:
-                match = re.match(pattern, line.strip())
+                # pass 1: Check for CAS number and skip if found
+                line = re.sub(cas_number_pattern, '', line).strip()
+                match = re.match(pattern, line)
                 if match:
                     material, amount = match.groups()
                     material = material.replace('[', '').replace(']', '')  # Remove brackets from material name
-                    
                     try:
                         amount = float(amount) if '.' in amount else int(amount)
-                        if amount <= 0 or amount > 1000 or material == "Total":  # Sanity check, accept max value in parts of a thousand
+                        if amount <= 0 or amount > 1000 or material.upper() == "TOTAL":  # Sanity check, accept max value in parts of a thousand
                             continue
                         else:
                             # check if material has dilution information (two conventions: either a percentage at the end of the material name or a baked solvent)

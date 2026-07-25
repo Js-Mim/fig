@@ -1,6 +1,6 @@
 # imports
 import io
-import base64
+import requests
 import streamlit as st
 from utils.pdf_utils import grab_formula
 from utils.csv_utils import load_csv, text_to_dataframe, compute_percentages, list_to_dataframe, compute_concentration
@@ -21,13 +21,14 @@ with st.sidebar:
     )
     st.header("PDF Input")
     uploaded_pdf_file = st.file_uploader("Upload PDF", type=["pdf"])
+    pdf_url = st.text_input('The URL link to the PDF file')
     st.header("CSV Input")
     uploaded_csv_file = st.file_uploader("Upload CSV", type=["csv"])
     separator = "," #st.text_input("Separator", value=",", max_chars=1)
     encoding = "utf-8" #st.text_input("Encoding", value="utf-8")
 
 
-if not uploaded_csv_file and not formula_text.strip() and not uploaded_pdf_file:
+if not uploaded_csv_file and not formula_text.strip() and not uploaded_pdf_file and not pdf_url:
     st.info("Upload a CSV or PDF file or type your formula inside the Text Input to start.")
     st.stop()
 
@@ -52,6 +53,15 @@ if uploaded_pdf_file:
     except Exception as exc:  # pragma: no cover - runtime UI path
         st.error(f"Failed to read PDF: {exc}")
         st.stop()
+if pdf_url:
+    response = requests.get(pdf_url)
+    if response.status_code == 200:
+        formula_list = grab_formula(io.BytesIO(response.content))
+        if not formula_list:
+            st.warning("No valid materials found in the PDF.")
+            st.stop()
+        # Convert list to DataFrame
+        dataframe = list_to_dataframe(formula_list)
 if formula_text.strip():
     dataframe = text_to_dataframe(formula_text)
 
@@ -80,9 +90,9 @@ with ops_percentages:
             working_df = compute_percentages(working_df, column=amount_column)
             st.success("Dataframe updated with Percentage column.")
             st.subheader("Updated Data")
-            st.dataframe(working_df, use_container_width=True, hide_index=True)
+            st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
-            st.metric("Total Concentration", value=f"{compute_concentration(working_df):.2f}%")
+            st.metric("Total concentration of enlisted materials, minus detected diluents", value=f"{compute_concentration(working_df):.2f}%")
         except ValueError as exc:
             st.error(str(exc))
 

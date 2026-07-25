@@ -6,8 +6,12 @@ import streamlit as st
 from typing import Optional
 
 # defs
-SOLVENT_KEYWORDS = ["IPM", "TEC",
-                    "DPG", "SOLVENT",
+SOLVENT_KEYWORDS = ["IPM", "TEC", "DPG", "MCT",
+                    "ISO-PROPYL MYRISTATE",
+                    "ISOPROPYL MYRISTATE",
+                    "DIPROPYLENE GLYCOL",
+                    "TRIETHYL CITRATE",
+                    "SOLVENT",
                     "ETHANOL", "ETOH", 
                     "CARRIER", "DILUENT"]
 
@@ -85,7 +89,10 @@ def compute_percentages(df: pd.DataFrame,
     df_copy["Percentage (Absolute)"] = pd.Series(df_copy["Percentage (Relative)"] * dilution_values, index=df_copy.index)
     df_copy["Parts (/1000)"] = pd.Series((numeric_values / total) * 1000, index=df_copy.index)
     # add percentage symbol
-    df_copy["Dilution"] = df_copy["Dilution"].apply(lambda x: f"{x:.1f}%")
+    try:
+        df_copy["Dilution"] = df_copy["Dilution"].apply(lambda x: f"{x:.1f}%")
+    except ValueError:
+        pass # it's already in string format with "%"
     df_copy["Percentage (Relative)"] = df_copy["Percentage (Relative)"].apply(lambda x: f"{x:.2f}%")
     df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.5f}%")
     return df_copy
