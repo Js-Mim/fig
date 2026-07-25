@@ -46,7 +46,7 @@ If that is the first time using the repository, it may take a while to install t
 - Formula grabbing from CSV, PDF, and text input
 - Basic formula editing
 - Basic calculation of percentage (absolute / relative), parts (/1000), and total concentration
-
+- Interactive batch preparation for trialing
 
 ## Repository Layout
 
