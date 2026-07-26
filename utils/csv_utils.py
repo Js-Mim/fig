@@ -1,5 +1,5 @@
 # imports
-import csv
+import re
 import io
 import pandas as pd
 import streamlit as st
@@ -104,27 +104,39 @@ def list_to_dataframe(data: list) -> pd.DataFrame:
     return pd.DataFrame(data, columns=["Material", "Dilution", "Amount"])
 
 def text_to_dataframe(text: str) -> pd.DataFrame:
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = text.strip().split('\n')
     if not lines:
         return pd.DataFrame(columns=["Material", "Dilution", "Amount"])
-    rows = []
-    max_len = 0
-    for line in lines:
-        if ',' in line:
-            parsed = next(csv.reader([line], delimiter=",", skipinitialspace=True))
-        else:
-            parsed = next(csv.reader([line], delimiter=" ", skipinitialspace=True))
-        cleaned = [value.strip() for value in parsed]
-        rows.append(cleaned)
-        max_len = max(max_len, len(cleaned))
-
-    if max_len == 3:
-        columns = ["Material", "Dilution", "Amount"]
-    else:
-        columns = [f"Column {idx + 1}" for idx in range(max_len)]
-
-    padded_rows = [row + [""] * (max_len - len(row)) for row in rows]
     
-    df = pd.DataFrame(padded_rows, columns=columns)
+    rows = []
+    for line in lines:
+        cleaned_line = re.sub(r'[\s.,]{2,}', ' ', line).strip()
+        # remove any brackets
+        cleaned_line = re.sub(r'[\[\]\(\)\{\}]', '', cleaned_line)
+        match = re.match(r"^(.*?)\s+((?:\d+\s*)+)$", cleaned_line)
+        if not match:
+            # combo pattern: numbers + numbers followed by %
+            pattern = re.compile(r"^(.*?)\s+((?:\d+(?:\s*%|%)\s*)+|\b(?:\d+\s*)+)$")
+            match = pattern.match(cleaned_line)
+        groups = match.groups()
+        
+        if len(groups) < 3:
+            # case dilution is included in the material
+            material = groups[0]
+            dilution = "100%"
+            amount = groups[1]
+            if "%" in groups[0]:
+                dilution = re.findall(r"\d+(?=\s*%)", groups[0])[0] # neglect additional numerical information
+                dilution = str(dilution) + "%"
+                material = groups[0]
+                # case that amount is written in percentage
+            if groups[1].endswith("%"):
+                amount = groups[1][:-1]  # Remove the trailing '%' from the second group
+
+            groups = (material, dilution, amount)
+
+        rows.append(list(groups))
+
+    df = pd.DataFrame(rows, columns=['Material', 'Dilution', 'Amount'])
     df = df.astype({'Amount': float})
     return df

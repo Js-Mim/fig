@@ -17,7 +17,7 @@ with st.sidebar:
     st.header("Text Input")
     formula_text = st.text_area(
         "Formula must include the following information: Material, Dilution, Amount in this exact order comma or space separated. " \
-        "Each material must be on a new line.",
+        "Each material must be provided on a new line.",
         height=120,
     )
     st.header("PDF Input")
@@ -103,11 +103,17 @@ with ops_batches:
     working_df = edited_df.copy()
     batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5,
                              max_value=20.0, step=0.5, value=10.0)
+    dilution_q = st.checkbox("Dilution Adjustment", value=False)
     if batch_amount:
         analysed_df = compute_percentages(working_df, column=amount_column)
-        new_amount_series, new_dilution_series = calculate_batch_amount(analysed_df, batch_amount)
+        if dilution_q:
+            st.info("Dilution adjustment is enabled. Amounts below the threshold will be adjusted.")
+            new_amount_series, new_dilution_series = calculate_batch_amount(analysed_df, batch_amount)
+        else:
+            new_amount_series = analysed_df["Percentage (Relative)"].copy().apply(lambda x: (float(x.rstrip("%")) / 100.0) * batch_amount)
+            new_dilution_series = analysed_df["Dilution"].copy()
         working_df["Amount"] = new_amount_series
         working_df["Dilution"] = new_dilution_series
         st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
         new_total = float(working_df["Amount"].sum())
-        #assert abs(new_total - batch_amount) < 1e-2, "Total amount does not match the desired batch amount."
+        assert abs(new_total - batch_amount) < 1e-2, "Total amount does not match the desired batch amount."
