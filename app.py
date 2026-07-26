@@ -75,6 +75,7 @@ edited_df = st.data_editor(
     key="csv_editor",
 )
 st.metric("Materials found", value=len(edited_df))  # Point out number of materials
+st.metric("Total Amount", value=edited_df["Amount"].sum())
 working_df = edited_df.copy()
 
 
@@ -92,21 +93,23 @@ with ops_percentages:
             st.subheader("Updated Data")
             st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
-            st.metric("Total concentration of enlisted materials, minus detected diluents", value=f"{compute_concentration(working_df):.2f}%")
+            st.metric("Total concentration of enlisted materials, minus detected diluent(s)", value=f"{compute_concentration(working_df):.2f}%")
             st.bar_chart(working_df, x="Material", y="Amount", horizontal=True, use_container_width=True)
         except ValueError as exc:
             st.error(str(exc))
 
 with ops_batches:
     working_df = edited_df.copy()
-    # change_dilution = st.checkbox("Dilution Recommendation", value=False)
     batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5, max_value=20.0, step=0.5)
     if batch_amount:
         try:
             analysed_df = compute_percentages(working_df, column=amount_column)
-            working_df["Amount"] = analysed_df["Percentage (Absolute)"].apply(
+            working_df["Amount"] = analysed_df["Percentage (Relative)"].apply(
                 lambda x: (float(x.rstrip("%")) / 100.0) * batch_amount
             )
             st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
+
+            new_total = float(working_df["Amount"].sum())
+            assert abs(new_total - batch_amount) < 1e-2, "Total amount does not match the desired batch amount."
         except ValueError as exc:
             st.error(str(exc))

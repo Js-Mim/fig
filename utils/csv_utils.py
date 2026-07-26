@@ -6,7 +6,8 @@ import streamlit as st
 from typing import Optional
 
 # defs
-SOLVENT_KEYWORDS = ["IPM", "TEC", "DPG", "MCT",
+SOLVENT_KEYWORDS = ["IPM", "TEC", "DEP", "DPG", "MCT",
+                    "DIETHYL PHTALATE",
                     "ISO-PROPYL MYRISTATE",
                     "ISOPROPYL MYRISTATE",
                     "DIPROPYLENE GLYCOL",
@@ -93,8 +94,8 @@ def compute_percentages(df: pd.DataFrame,
         df_copy["Dilution"] = df_copy["Dilution"].apply(lambda x: f"{x:.1f}%")
     except ValueError:
         pass # it's already in string format with "%"
-    df_copy["Percentage (Relative)"] = df_copy["Percentage (Relative)"].apply(lambda x: f"{x:.2f}%")
-    df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.5f}%")
+    df_copy["Percentage (Relative)"] = df_copy["Percentage (Relative)"].apply(lambda x: f"{x:.3f}%")
+    df_copy["Percentage (Absolute)"] = df_copy["Percentage (Absolute)"].apply(lambda x: f"{x:.6f}%")
     return df_copy
 
 def list_to_dataframe(data: list) -> pd.DataFrame:
