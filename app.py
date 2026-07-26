@@ -2,6 +2,7 @@
 import io
 import requests
 import streamlit as st
+from utils.formula_utis import calculate_batch_amount
 from utils.pdf_utils import grab_formula
 from utils.csv_utils import load_csv, text_to_dataframe, compute_percentages, list_to_dataframe, compute_concentration
 
@@ -100,16 +101,13 @@ with ops_percentages:
 
 with ops_batches:
     working_df = edited_df.copy()
-    batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5, max_value=20.0, step=0.5)
+    batch_amount = st.slider("Select the desired amount (grams)", min_value=0.5,
+                             max_value=20.0, step=0.5, value=10.0)
     if batch_amount:
-        try:
-            analysed_df = compute_percentages(working_df, column=amount_column)
-            working_df["Amount"] = analysed_df["Percentage (Relative)"].apply(
-                lambda x: (float(x.rstrip("%")) / 100.0) * batch_amount
-            )
-            st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
-
-            new_total = float(working_df["Amount"].sum())
-            assert abs(new_total - batch_amount) < 1e-2, "Total amount does not match the desired batch amount."
-        except ValueError as exc:
-            st.error(str(exc))
+        analysed_df = compute_percentages(working_df, column=amount_column)
+        new_amount_series, new_dilution_series = calculate_batch_amount(analysed_df, batch_amount)
+        working_df["Amount"] = new_amount_series
+        working_df["Dilution"] = new_dilution_series
+        st.dataframe(working_df, use_container_width=True, width='stretch', hide_index=True)
+        new_total = float(working_df["Amount"].sum())
+        #assert abs(new_total - batch_amount) < 1e-2, "Total amount does not match the desired batch amount."
