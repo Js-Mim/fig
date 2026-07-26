@@ -7,11 +7,12 @@ from typing import Optional
 
 # defs
 SOLVENT_KEYWORDS = ["IPM", "TEC", "DEP", "DPG", "MCT",
-                    "DIETHYL PHTALATE",
-                    "ISO-PROPYL MYRISTATE",
-                    "ISOPROPYL MYRISTATE",
-                    "DIPROPYLENE GLYCOL",
-                    "TRIETHYL CITRATE",
+                    "DIETHYL PHTALATE", "DIETHYL PHTALATE DILUENT",
+                    "ISO-PROPYL MYRISTATE", "ISO-PROPYL MYRISTATE DILUENT",
+                    "ISOPROPYL MYRISTATE", "ISOPROPYL MYRISTATE DILUENT",
+                    "TRIETHYL CITRATE", "TRIETHYL CITRATE DILUENT",
+                    "DIPROPYLENE GLYCOL", "DIPROPYLENE GLYCOL DILUENT",
+                    "MCT OIL",
                     "SOLVENT",
                     "ETHANOL", "ETOH", 
                     "CARRIER", "DILUENT"]
