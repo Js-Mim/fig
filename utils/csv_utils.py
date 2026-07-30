@@ -137,7 +137,12 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
                     amount = re.findall(r"\d+(?=\s*)", groups[0])[0]
                     dilution = "100%"
                     # modify group information to escape last check
-                    groups = (groups[0], str(groups[1].replace("%", "")))
+                    groups = (material, str(groups[1].replace("%", "")))
+                elif any(char.isdigit() for char in material) and "%" in groups[0]:
+                    material = re.sub(r"\d+(?=\s*%)%", "", groups[0]).strip()  # Remove the numerical part from the material
+                    dilution = re.findall(r"\d+(?=\s*%)", groups[0])[0]  # Extract the numerical part as dilution
+                    dilution = str(dilution) + "%"
+                    amount = groups[1]
                 else:
                     dilution = "100%"
                     amount = groups[1]
