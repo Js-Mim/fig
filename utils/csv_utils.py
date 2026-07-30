@@ -119,25 +119,79 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
             # combo pattern: numbers + numbers followed by %
             pattern = re.compile(r"^(.*?)\s+((?:\d+(?:\s*%|%)\s*)+|\b(?:\d+\s*)+)$")
             match = pattern.match(cleaned_line)
-        groups = match.groups()
-        
-        if len(groups) < 3:
-            # case dilution is included in the material
-            material = groups[0]
-            dilution = "100%"
-            amount = groups[1]
-            if "%" in groups[0]:
-                dilution = re.findall(r"\d+(?=\s*%)", groups[0])[0] # neglect additional numerical information
-                dilution = str(dilution) + "%"
-                material = groups[0]
-                # case that amount is written in percentage
-            if groups[1].endswith("%"):
-                amount = groups[1][:-1]  # Remove the trailing '%' from the second group
+            if not match:
+                pattern = re.compile(r'^(.*?)\s+((?:\d+(?:\.\d+)?(?:\s*%|%)\s*)+|\b(?:\d+(?:\.\d+)?\s*)+)$')
+                match = pattern.match(cleaned_line)
 
-            groups = (material, dilution, amount)
+        groups = match.groups()
+
+        if len(groups) < 3:
+            if len(groups[1].split()) > 1:
+                split_groups = groups[1].split()  # Check if the second group can be split into multiple parts
+                # If it can be split, we assume the first part is the dilution and the second part is the amount
+                groups = (groups[0], split_groups[0], split_groups[1])
+            else: # case dilution is included in the material
+                material = groups[0]
+                if any(char.isdigit() for char in material) and "%" in groups[1]:
+                    material = groups[0]
+                    amount = re.findall(r"\d+(?=\s*)", groups[0])[0]
+                    dilution = "100%"
+                    # modify group information to escape last check
+                    groups = (groups[0], str(groups[1].replace("%", "")))
+                else:
+                    dilution = "100%"
+                    amount = groups[1]
+                if "%" in groups[0]:
+                    dilution = re.findall(r"\d+(?=\s*%)", groups[0])[0] # neglect additional numerical information
+                    dilution = str(dilution) + "%"
+                    material = groups[0]
+                    # case that amount is written in percentage
+                if groups[1].endswith("%"):
+                    amount = groups[1][:-1]  # Remove the trailing '%' from the second group
+
+                groups = (material, dilution, amount)
 
         rows.append(list(groups))
 
     df = pd.DataFrame(rows, columns=['Material', 'Dilution', 'Amount'])
     df = df.astype({'Amount': float})
+    df["Dilution"] = df["Dilution"].apply(lambda x: f"{x:.1f}%" if isinstance(x, (int, float)) else x)
     return df
+
+def merge_accords(parent_df: pd.DataFrame,
+                  added_df:pd.DataFrame) -> pd.DataFrame:
+    existing_materials = [material.upper() for material in parent_df['Material'].tolist()]
+    for _, row in added_df.iterrows():
+        added_material = row['Material']
+        added_dilution = str(row['Dilution'])
+        added_dilution_float = float(added_dilution.replace("%", ""))
+        added_amount = row['Amount']
+        # Material already exists, so we are doing a merge
+        if added_material.upper() in existing_materials:
+            # find where the material is located
+            existing_idx = parent_df.index[parent_df['Material'] == added_material].tolist()
+            # match dilutions
+            existing_dilution = parent_df.loc[existing_idx, 'Dilution'].values[0]
+            existing_dilution_float = float(existing_dilution.replace("%", ""))
+            existing_amount = parent_df.loc[existing_idx, 'Amount'].values[0]
+            if existing_dilution_float == added_dilution_float:
+                # same dilution, so we can merge amounts
+                new_amount = existing_amount + added_amount
+                parent_df.loc[existing_idx, 'Amount'] = new_amount
+            else:
+                max_dilution = max(existing_dilution_float, added_dilution_float)
+                if max_dilution == existing_dilution_float:
+                    dilution_factor = added_dilution_float / existing_dilution_float 
+                    adjusted_amount = added_amount * dilution_factor
+                    parent_df.loc[existing_idx, 'Amount'] = adjusted_amount + existing_amount
+                else:
+                    dilution_factor = existing_dilution_float / added_dilution_float
+                    adjusted_amount = existing_amount * dilution_factor
+                    parent_df.loc[existing_idx, 'Amount'] = adjusted_amount + added_amount
+                    # update dilution to the new max dilution
+                    parent_df.loc[existing_idx, 'Dilution'] = f"{max_dilution}%"
+        else:
+            row['Dilution'] = f"{added_dilution_float:.0f}%"
+            parent_df.loc[len(parent_df)] = [False, row['Material'], row['Dilution'], row['Amount']]
+
+    return parent_df
