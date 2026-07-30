@@ -101,6 +101,7 @@ with ops_percentages:
                          width='stretch', hide_index=True, 
                          column_order=(working_df.columns.tolist()[1:]))
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
+            breakpoint()
             st.metric("Total concentration of enlisted materials, minus detected diluent(s)", value=f"{compute_concentration(working_df):.2f}%")
             st.bar_chart(working_df, x="Material", y="Amount", horizontal=True, use_container_width=True)
         except ValueError as exc:
@@ -156,8 +157,11 @@ with fig_merge:
 
             # Start replacing the selected row with the new accord_df
             try:
+                _df_dump = compute_percentages(working_df, column=amount_column)
+                relative_factor = float(_df_dump["Percentage (Relative)"][selected_rows[""].index.values[0]].replace("%", "")) / 100.                
+                parent_used_dilution = float(_df_dump["Dilution"][selected_rows[""].index.values[0]].replace("%", "")) / 100.
                 working_df = working_df.drop(selected_rows.index)
-                working_df = merge_accords(working_df, accord_df)
+                working_df = merge_accords(working_df, accord_df, relative_factor, parent_used_dilution)
                 working_df = compute_percentages(working_df, column=amount_column)
 
                 new_column_list = working_df.columns.tolist()

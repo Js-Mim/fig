@@ -159,13 +159,16 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
     return df
 
 def merge_accords(parent_df: pd.DataFrame,
-                  added_df:pd.DataFrame) -> pd.DataFrame:
+                  added_df:pd.DataFrame,
+                  relative_factor: float,
+                  parent_used_dilution: float) -> pd.DataFrame:
+
     existing_materials = [material.upper() for material in parent_df['Material'].tolist()]
     for _, row in added_df.iterrows():
         added_material = row['Material']
         added_dilution = str(row['Dilution'])
-        added_dilution_float = float(added_dilution.replace("%", ""))
-        added_amount = row['Amount']
+        added_dilution_float = float(added_dilution.replace("%", "")) * parent_used_dilution
+        added_amount = row['Amount'] * relative_factor
         # Material already exists, so we are doing a merge
         if added_material.upper() in existing_materials:
             # find where the material is located
@@ -192,6 +195,8 @@ def merge_accords(parent_df: pd.DataFrame,
                     parent_df.loc[existing_idx, 'Dilution'] = f"{max_dilution}%"
         else:
             row['Dilution'] = f"{added_dilution_float:.0f}%"
-            parent_df.loc[len(parent_df)] = [False, row['Material'], row['Dilution'], row['Amount']]
+            parent_df.loc[len(parent_df)] = [False, row['Material'], row['Dilution'], row['Amount'] * relative_factor]
+
+        parent_df['Dilution'] = parent_df['Dilution'].apply(lambda x: f"{float(x.replace('%', '')):.2f}%")
 
     return parent_df
