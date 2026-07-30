@@ -101,7 +101,6 @@ with ops_percentages:
                          width='stretch', hide_index=True, 
                          column_order=(working_df.columns.tolist()[1:]))
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
-            breakpoint()
             st.metric("Total concentration of enlisted materials, minus detected diluent(s)", value=f"{compute_concentration(working_df):.2f}%")
             st.bar_chart(working_df, x="Material", y="Amount", horizontal=True, use_container_width=True)
         except ValueError as exc:
