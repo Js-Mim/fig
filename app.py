@@ -80,7 +80,8 @@ edited_df = st.data_editor(
     hide_index=True,
 )
 st.metric("Materials found", value=len(edited_df))  # Point out number of materials
-st.metric("Total Amount", value=edited_df["Amount"].sum())
+st.metric("Total Amount",
+          value=f"{edited_df['Amount'].sum():.2f}")  # Point out total amount
 
 
 

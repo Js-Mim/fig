@@ -26,7 +26,10 @@ def load_csv(file_bytes: bytes, separator: str, encoding: str) -> pd.DataFrame:
     has_header = "Material" in first_line and "Dilution" in first_line and "Amount" in first_line
     if has_header:
         buffer.seek(0)  # Reset buffer position to the beginning
-        return pd.read_csv(buffer, sep=separator, encoding=encoding)
+        df = pd.read_csv(buffer, sep=separator, encoding=encoding)
+        if len(df.columns) > 3:
+            df = df[["Material", "Dilution", "Amount"]]
+        return df
     else:
         buffer.seek(0)
         df = pd.read_csv(buffer, sep=separator, encoding=encoding, header=None)
