@@ -49,9 +49,10 @@ def compute_concentration(df: pd.DataFrame) -> float:
     relative_percentages = df["Percentage (Relative)"]
     dilution_values = df["Dilution"]
     total = 0
+    diluents = []
     for material, p_value, d_value in zip(material_name, relative_percentages, dilution_values):
         if any(key.strip() == material.upper().strip() for key in SOLVENT_KEYWORDS):
-            continue  # Skip solvent materials
+            diluents.append(material)
         else:
             p_value_check = isinstance(p_value, str) and p_value.endswith("%")
             d_value_check = isinstance(d_value, str) and d_value.endswith("%")
@@ -63,7 +64,8 @@ def compute_concentration(df: pd.DataFrame) -> float:
                 raise ValueError(f"Invalid values. Expected a string ending with '%'.")
                 
     total = total * 100  # convert back to percentage
-    return total
+    diluents = ', '.join(diluents) if diluents else "None"
+    return total, diluents
 
 
 def compute_percentages(df: pd.DataFrame,
