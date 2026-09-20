@@ -134,6 +134,8 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
             if len(groups[1].split()) > 1:
                 split_groups = groups[1].split()  # Check if the second group can be split into multiple parts
                 # If it can be split, we assume the first part is the dilution and the second part is the amount
+                if not split_groups[0].endswith("%"):
+                    split_groups[0] = split_groups[0] + "%"
                 groups = (groups[0], split_groups[0], split_groups[1])
             else: # case dilution is included in the material
                 material = groups[0]
