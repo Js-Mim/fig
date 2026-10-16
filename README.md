@@ -46,7 +46,9 @@ If that is the first time using the repository, it may take a while to install t
 - Formula grabbing from CSV, PDF, and text input
 - Basic formula editing
 - Basic calculation of percentage (absolute / relative), parts (/1000), and total concentration
+- Analysis bar chart of absolute percentages, accounting for each material's dilution
 - Interactive batch preparation for trialing
+- FIG Merge: replace a selected material with an accord
 
 ## Repository Layout
 
