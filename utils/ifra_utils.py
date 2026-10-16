@@ -1,11 +1,10 @@
 import math
 import re
 import unicodedata
+import pandas as pd
 from pathlib import Path
 
-import pandas as pd
-
-
+# defs
 STANDARD_NAME = "Name of the IFRA Standard"
 LIMIT = "Category 4 (%)"
 NCS_NAME = "NCS NAME"
