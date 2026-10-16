@@ -110,7 +110,7 @@ st.metric("Total Amount",
 
 # Features & Operations
 st.subheader("Operations")
-if st.button("IFRA Scan"):
+if st.button("IFRA Screening"):
     st.subheader("IFRA 51st Amendment - Category 4 screening")
     st.caption(
         "The FIGbench formula is treated as the finished product. Direct additions and "
