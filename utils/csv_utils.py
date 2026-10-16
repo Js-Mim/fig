@@ -119,6 +119,15 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
         cleaned_line = re.sub(r'[\s.,]{2,}', ' ', line).strip()
         # remove any brackets
         cleaned_line = re.sub(r'[\[\]\(\)\{\}]', '', cleaned_line)
+        explicit_columns = re.fullmatch(
+            r"(.+?)(?:\s*,\s*|\s+)(\d+(?:\.\d+)?%?)"
+            r"(?:\s*,\s*|\s+)(\d+(?:\.\d+)?%?)",
+            cleaned_line,
+        )
+        if explicit_columns:
+            material, dilution, amount = explicit_columns.groups()
+            rows.append([material, dilution.rstrip("%") + "%", amount.rstrip("%")])
+            continue
         match = re.match(r"^(.*?)\s+((?:\d+\s*)+)$", cleaned_line)
         if not match:
             # combo pattern: numbers + numbers followed by %
@@ -128,6 +137,8 @@ def text_to_dataframe(text: str) -> pd.DataFrame:
                 pattern = re.compile(r'^(.*?)\s+((?:\d+(?:\.\d+)?(?:\s*%|%)\s*)+|\b(?:\d+(?:\.\d+)?\s*)+)$')
                 match = pattern.match(cleaned_line)
 
+        if match is None:
+            raise ValueError(f"Could not parse formula line: {line!r}")
         groups = match.groups()
 
         if len(groups) < 3:
@@ -174,41 +185,42 @@ def merge_accords(parent_df: pd.DataFrame,
                   added_df:pd.DataFrame,
                   relative_factor: float,
                   parent_used_dilution: float) -> pd.DataFrame:
-
-    existing_materials = [material.upper() for material in parent_df['Material'].tolist()]
+    """Expand a parts/100 accord, combining duplicates at the stronger dilution."""
+    parent_df = parent_df.reset_index(drop=True).copy()
+    parent_df["Amount"] = pd.to_numeric(parent_df["Amount"]).astype(float)
+    parent_df["Dilution"] = parent_df["Dilution"].apply(
+        lambda value: f"{float(str(value).rstrip('%'))}%"
+    )
     for _, row in added_df.iterrows():
         added_material = row['Material']
-        added_dilution = str(row['Dilution'])
-        added_dilution_float = float(added_dilution.replace("%", "")) * parent_used_dilution
-        added_amount = row['Amount'] * relative_factor
-        # Material already exists, so we are doing a merge
-        if added_material.upper() in existing_materials:
-            # find where the material is located
-            existing_idx = parent_df.index[parent_df['Material'] == added_material].tolist()
-            # match dilutions
-            existing_dilution = parent_df.loc[existing_idx, 'Dilution'].values[0]
-            existing_dilution_float = float(existing_dilution.replace("%", ""))
-            existing_amount = parent_df.loc[existing_idx, 'Amount'].values[0]
+        added_dilution_float = float(str(row['Dilution']).rstrip("%")) * parent_used_dilution
+        added_amount = float(row['Amount']) * relative_factor
+        existing_indices = parent_df.index[
+            parent_df["Material"].str.upper() == added_material.upper()
+        ]
+        if len(existing_indices):
+            existing_idx = existing_indices[0]
+            existing_dilution_float = float(
+                str(parent_df.at[existing_idx, 'Dilution']).rstrip("%")
+            )
+            existing_amount = parent_df.at[existing_idx, 'Amount']
             if existing_dilution_float == added_dilution_float:
-                # same dilution, so we can merge amounts
-                new_amount = existing_amount + added_amount
-                parent_df.loc[existing_idx, 'Amount'] = new_amount
+                parent_df.at[existing_idx, 'Amount'] = existing_amount + added_amount
             else:
                 max_dilution = max(existing_dilution_float, added_dilution_float)
-                if max_dilution == existing_dilution_float:
-                    dilution_factor = added_dilution_float / existing_dilution_float 
-                    adjusted_amount = added_amount * dilution_factor
-                    parent_df.loc[existing_idx, 'Amount'] = adjusted_amount + existing_amount
-                else:
-                    dilution_factor = existing_dilution_float / added_dilution_float
-                    adjusted_amount = existing_amount * dilution_factor
-                    parent_df.loc[existing_idx, 'Amount'] = adjusted_amount + added_amount
-                    # update dilution to the new max dilution
-                    parent_df.loc[existing_idx, 'Dilution'] = f"{max_dilution}%"
+                parent_df.at[existing_idx, 'Amount'] = (
+                    existing_amount * existing_dilution_float
+                    + added_amount * added_dilution_float
+                ) / max_dilution
+                parent_df.at[existing_idx, 'Dilution'] = f"{max_dilution}%"
         else:
-            row['Dilution'] = f"{added_dilution_float:.0f}%"
-            parent_df.loc[len(parent_df)] = [False, row['Material'], row['Dilution'], row['Amount'] * relative_factor]
-
-        parent_df['Dilution'] = parent_df['Dilution'].apply(lambda x: f"{float(x.replace('%', '')):.2f}%")
+            new_row = {
+                "Material": added_material,
+                "Dilution": f"{added_dilution_float}%",
+                "Amount": added_amount,
+            }
+            if "" in parent_df.columns:
+                new_row[""] = False
+            parent_df = pd.concat([parent_df, pd.DataFrame([new_row])], ignore_index=True)
 
     return parent_df

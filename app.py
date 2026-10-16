@@ -153,23 +153,30 @@ with fig_merge:
                 except Exception as exc:  # pragma: no cover - runtime UI path
                     st.error(f"Failed to read CSV: {exc}")
                     st.stop()
-            if accord_text:
-                accord_df = text_to_dataframe(accord_text.strip())
+            if accord_text.strip():
+                try:
+                    accord_df = text_to_dataframe(accord_text.strip())
+                except ValueError as exc:
+                    st.error(f"Failed to read accord: {exc}")
+                    st.stop()
 
             # Start replacing the selected row with the new accord_df
-            try:
-                _df_dump = compute_percentages(working_df, column=amount_column)
-                relative_factor = float(_df_dump["Percentage (Relative)"][selected_rows[""].index.values[0]].replace("%", "")) / 100.                
-                parent_used_dilution = float(_df_dump["Dilution"][selected_rows[""].index.values[0]].replace("%", "")) / 100.
-                working_df = working_df.drop(selected_rows.index)
-                working_df = merge_accords(working_df, accord_df, relative_factor, parent_used_dilution)
-                working_df = compute_percentages(working_df, column=amount_column)
+            if accord_df is not None:
+                try:
+                    analysed_df = compute_percentages(working_df, column=amount_column)
+                    selected_row = analysed_df.loc[selected_rows.index[0]]
+                    relative_factor = selected_row["Amount"] / analysed_df["Amount"].sum()
+                    parent_used_dilution = float(selected_row["Dilution"].rstrip("%")) / 100.
+                    working_df = working_df.drop(selected_rows.index)
+                    working_df = merge_accords(
+                        working_df, accord_df, relative_factor, parent_used_dilution
+                    )
+                    working_df = compute_percentages(working_df, column=amount_column)
 
-                new_column_list = working_df.columns.tolist()
-                st.dataframe(working_df, use_container_width=True,
-                             width='stretch', hide_index=True, 
-                             column_order=(new_column_list[1:4] + new_column_list[5:6])
-                             )
-                
-            except AttributeError as exc:
-                pass
+                    new_column_list = working_df.columns.tolist()
+                    st.dataframe(working_df, use_container_width=True,
+                                 width='stretch', hide_index=True,
+                                 column_order=(new_column_list[1:4] + new_column_list[5:6])
+                                 )
+                except (ValueError, TypeError, KeyError) as exc:
+                    st.error(f"Failed to merge accord: {exc}")
