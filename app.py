@@ -5,6 +5,7 @@ import streamlit as st
 from utils.csv_utils import *
 from utils.formula_utis import calculate_batch_amount
 from utils.pdf_utils import grab_formula
+from utils.ifra_utils import load_ifra_tables, scan_ifra
 
 # helpers
 def reset_editor():
@@ -109,6 +110,35 @@ st.metric("Total Amount",
 
 # Features & Operations
 st.subheader("Operations")
+if st.button("IFRA Scan"):
+    st.subheader("IFRA 51st Amendment - Category 4 screening")
+    st.caption(
+        "The FIGbench formula is treated as the finished product. Direct additions and "
+        "matched natural contributions are summed per standard. This is a name-based "
+        "screening and not an IFRA compliance certificate! "
+        "Specifications, notebox conditions, and unmatched materials require review."
+    )
+    try:
+        standards, naturals = load_ifra_tables()
+        summary, contributions, issues = scan_ifra(edited_df, standards, naturals)
+    except (OSError, ImportError, ValueError, TypeError, KeyError) as exc:
+        st.error(f"Failed to scan IFRA data: {exc}")
+    else:
+        if not summary.empty:
+            if summary["Status"].isin(["Above limit", "Prohibited"]).any():
+                st.error("One or more assessed constituents exceed a Category 4 limit or are prohibited.")
+            if summary["Status"].eq("Manual review required").any():
+                st.warning("Some Category 4 entries cannot be evaluated numerically; review the standards.")
+            st.dataframe(summary, hide_index=True, use_container_width=True)
+        else:
+            st.warning("No standard totals could be assessed.")
+        if not issues.empty:
+            st.warning("The scan is incomplete. Unmatched, ambiguous, or invalid records are listed below.")
+            st.dataframe(issues, hide_index=True, use_container_width=True)
+        if not contributions.empty:
+            with st.expander("Source contributions"):
+                st.dataframe(contributions, hide_index=True, use_container_width=True)
+
 ops_percentages, ops_batches, fig_merge  = st.tabs(
     ["Grab Percentages", "Prepare Batches", "FIG Merge"]
 )
