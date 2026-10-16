@@ -6,6 +6,17 @@ from utils.csv_utils import *
 from utils.formula_utis import calculate_batch_amount
 from utils.pdf_utils import grab_formula
 
+# helpers
+def reset_editor():
+    for key in ("csv_editor", "accord_text", "accord_csv"):
+        st.session_state.pop(key, None)
+
+
+def place_to_figbench(merged_df):
+    st.session_state["figbench_table"] = merged_df[
+        ["Material", "Dilution", "Amount"]
+    ].reset_index(drop=True).copy()
+    reset_editor()
 
 # Headline & Title
 st.set_page_config(page_title="FIG-Workbench", layout="wide")
@@ -31,6 +42,9 @@ with st.sidebar:
 
 
 if not uploaded_csv_file and not formula_text.strip() and not uploaded_pdf_file and not pdf_url:
+    for key in ("figbench_source", "figbench_table"):
+        st.session_state.pop(key, None)
+    reset_editor()
     st.info("Upload a CSV or PDF file or type your formula inside the Text Input to start.")
     st.stop()
 
@@ -67,10 +81,18 @@ if pdf_url:
 if formula_text.strip():
     dataframe = text_to_dataframe(formula_text)
 
+if (
+    "figbench_source" not in st.session_state
+    or not dataframe.equals(st.session_state["figbench_source"])
+):
+    st.session_state["figbench_source"] = dataframe.copy()
+    st.session_state["figbench_table"] = dataframe.copy()
+    reset_editor()
+
 # CSV Preview & Edit
 st.subheader("Preview & Edit")
 st.caption("Edit CSV data")
-dataframe = dataframe.reset_index(drop=True)  # Reset index to ensure proper alignment
+dataframe = st.session_state["figbench_table"].reset_index(drop=True).copy()
 dataframe.insert(0, "", False)  
 edited_df = st.data_editor(
     dataframe,
@@ -104,7 +126,12 @@ with ops_percentages:
             st.metric("Materials found", value=len(edited_df))  # Point out number of materials
             concentration_val, diluents = compute_concentration(working_df)
             st.metric(f"Total concentration of enlisted materials, minus detected diluent(s): {diluents}", value=f"{concentration_val:.2f}%")
-            st.bar_chart(working_df, x="Material", y="Amount", horizontal=True, use_container_width=True)
+            chart_df = working_df[["Material", "Percentage (Absolute)"]].copy()
+            chart_df["Percentage (Absolute)"] = chart_df["Percentage (Absolute)"].str.rstrip("%").astype(float)
+            st.bar_chart(
+                chart_df, x="Material", y="Percentage (Absolute)",
+                x_label="Absolute %", horizontal=True, use_container_width=True,
+            )
         except ValueError as exc:
             st.error(str(exc))
 
@@ -144,8 +171,9 @@ with fig_merge:
                     "Formula must include the following information: Material, Dilution, Amount in this exact order comma or space separated. " \
                     "Each material must be provided on a new line.",
                     height=120,
+                    key="accord_text",
                 )
-            accord_csv_file = st.file_uploader("Upload CSV", type=["csv"])
+            accord_csv_file = st.file_uploader("Upload CSV", type=["csv"], key="accord_csv")
             if accord_csv_file:
                 try:
                     accord_value = accord_csv_file.getvalue()
@@ -178,5 +206,10 @@ with fig_merge:
                                  width='stretch', hide_index=True,
                                  column_order=(new_column_list[1:4] + new_column_list[5:6])
                                  )
+                    st.button(
+                        "Place to FIGbench",
+                        on_click=place_to_figbench,
+                        args=(working_df,),
+                    )
                 except (ValueError, TypeError, KeyError) as exc:
                     st.error(f"Failed to merge accord: {exc}")

@@ -140,6 +140,24 @@ class MergeAppTests(unittest.TestCase):
         app.run()
         self.assertEqual(list(app.exception), [])
 
+    def test_analysis_chart_uses_numeric_absolute_percentages(self):
+        app = self.start_app("Rose 10% 20\nBase 100% 80\nTrace 0.1% 0")
+        with patch("streamlit.bar_chart", wraps=st.bar_chart) as chart:
+            app.tabs[0].button[0].click().run()
+        self.assertEqual(list(app.exception), [])
+        self.assertEqual(list(app.error), [])
+        chart.assert_called_once()
+        chart_data = chart.call_args.args[0]
+        self.assertEqual(chart.call_args.kwargs["y"], "Percentage (Absolute)")
+        self.assertTrue(pd.api.types.is_numeric_dtype(chart_data["Percentage (Absolute)"]))
+        self.assertEqual(chart_data["Percentage (Absolute)"].tolist(), [2, 80, 0])
+        self.assertEqual(chart.call_args.kwargs["x"], "Material")
+        self.assertTrue(chart.call_args.kwargs["horizontal"])
+        self.assertEqual(
+            app.tabs[0].dataframe[0].value["Percentage (Absolute)"].tolist(),
+            ["2.000000%", "80.000000%", "0.000000%"],
+        )
+
     def test_no_selection_and_multiple_selection_do_not_offer_accord_input(self):
         app = self.start_app("Base 100% 80\nAccord 100% 20")
         self.assertEqual(len(app.text_area), 1)
@@ -153,6 +171,7 @@ class MergeAppTests(unittest.TestCase):
         self.assertEqual(len(app.text_area), 2)
         self.assertEqual(list(app.error), [])
         self.assertEqual(len(app.dataframe), 2)
+        self.assertFalse(any(button.label == "Place to FIGbench" for button in app.button))
         app.tabs[2].text_area[0].input("New A 100% 60\nNew B 100% 40").run()
         self.assertEqual(list(app.exception), [])
         self.assertEqual(list(app.error), [])
@@ -163,6 +182,50 @@ class MergeAppTests(unittest.TestCase):
         self.assertEqual(result["Amount"].tolist(), [40, 40, 12, 8])
         self.assertAlmostEqual(result["Amount"].sum(), 100)
         self.assertFalse(result[""].any())
+        self.assertTrue(any(button.label == "Place to FIGbench" for button in app.button))
+
+    def test_place_to_figbench_persists_and_drives_all_operations(self):
+        app = self.start_app("Base A 100% 40\nAccord 100% 20\nBase B 100% 40")
+        self.select_rows(app, [1])
+        app.tabs[2].text_area[0].input("New A 100% 60\nNew B 100% 40").run()
+        merged = app.dataframe[-1].value[["Material", "Dilution", "Amount"]].copy()
+        self.selected_indices = []
+        app.tabs[2].button[0].click().run()
+        self.assertEqual(list(app.exception), [])
+        self.assertEqual(list(app.error), [])
+        main = app.dataframe[0].value
+        assert_frame_equal(main[["Material", "Dilution", "Amount"]], merged)
+        self.assertEqual(main.columns.tolist(), ["", "Material", "Dilution", "Amount"])
+        self.assertFalse(main[""].any())
+        self.assertEqual(len(app.text_area), 1)
+        self.assertFalse(any(button.label == "Place to FIGbench" for button in app.button))
+        self.assertEqual(app.metric[0].value, "4")
+        self.assertEqual(app.metric[1].value, "100.00")
+
+        app.slider[0].set_value(5.0).run()
+        assert_frame_equal(app.dataframe[0].value[merged.columns], merged)
+        batch = app.tabs[1].dataframe[0].value
+        self.assertEqual(batch["Material"].tolist(), merged["Material"].tolist())
+        self.assertEqual(batch["Amount"].tolist(), [2, 2, 0.6, 0.4])
+        app.tabs[0].button[0].click().run()
+        analysed = app.tabs[0].dataframe[0].value
+        self.assertEqual(analysed["Material"].tolist(), merged["Material"].tolist())
+        self.assertEqual(analysed["Amount"].tolist(), [40, 40, 12, 8])
+
+        self.select_rows(app, [2])
+        self.assertEqual(app.tabs[2].text_area[0].value, "")
+        app.tabs[2].text_area[0].input("Rose 100% 100").run()
+        self.selected_indices = []
+        app.tabs[2].button[0].click().run()
+        self.assertEqual(list(app.exception), [])
+        self.assertEqual(
+            app.dataframe[0].value["Material"].tolist(), ["Base A", "Base B", "New B", "Rose"]
+        )
+
+        app.sidebar.text_area[0].input("Fresh 100% 100").run()
+        self.assertEqual(list(app.exception), [])
+        self.assertEqual(app.dataframe[0].value["Material"].tolist(), ["Fresh"])
+        self.assertEqual(app.dataframe[0].value["Amount"].tolist(), [100])
 
     def test_merge_uses_unrounded_selected_amount_and_parent_dilution(self):
         app = self.start_app("Base 100% 66.666667\nAccord 10% 33.333333")
@@ -181,6 +244,7 @@ class MergeAppTests(unittest.TestCase):
         app.tabs[2].text_area[0].input("not a formula").run()
         self.assertEqual(list(app.exception), [])
         self.assertTrue(any("Failed to read accord" in error.value for error in app.error))
+        self.assertFalse(any(button.label == "Place to FIGbench" for button in app.button))
         app.tabs[2].text_area[0].input("Rose 100% 100").run()
         self.assertEqual(list(app.exception), [])
         self.assertEqual(list(app.error), [])

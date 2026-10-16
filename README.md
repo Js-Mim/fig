@@ -46,6 +46,7 @@ If that is the first time using the repository, it may take a while to install t
 - Formula grabbing from CSV, PDF, and text input
 - Basic formula editing
 - Basic calculation of percentage (absolute / relative), parts (/1000), and total concentration
+- Analysis bar chart of absolute percentages, accounting for each material's dilution
 - Interactive batch preparation for trialing
 - FIG Merge: replace a selected material with an accord
 
@@ -68,6 +69,10 @@ New B 100% 40
 ```
 
 The result contains Base A = 40, Base B = 40, New A = 12, and New B = 8.
+Click **Place to FIGbench** beneath the merged result to replace the main editable
+table with it. Row selections and accord inputs are cleared, and all operations
+then use the merged formula. The table remains available across reruns in the
+current session; changing the source formula in the sidebar loads that new formula.
 The selected row's dilution also multiplies each accord component's dilution.
 Material names match case-insensitively. Matching materials at the same dilution
 have their amounts added; at different dilutions they are combined at the stronger
